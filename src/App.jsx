@@ -1,5 +1,9 @@
-import { Box, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from '@mui/material';
+import { Box, Table, TableBody, TableCell, TableContainer, TableRow, Typography } from '@mui/material';
+import { DataGrid } from '@mui/x-data-grid';
 import { useEffect, useState } from 'react';
+import BarChart from './components/BarChart';
+
+import Logo from "./assets/user-thumbnail.png"
 
 
 const ZOHO = window.ZOHO;
@@ -8,6 +12,7 @@ function App() {
   const [initialized, setInitialized] = useState(false) // initialize the widget
   const [currentUser, setCurrentUser] = useState() // owner of the deals
   const [currentUserSalesInfo, setCurrentUserSalesInfo] = useState() // get the current user's sales goal info
+  const [currentUserDeals, setCurrentUserDeals] = useState([]) // gets all the deals of the current user
 
   useEffect(() => { // initialize the app
     ZOHO.embeddedApp.on("PageLoad", function (data) { 
@@ -16,6 +21,14 @@ function App() {
 
     ZOHO.embeddedApp.init()
   }, [])
+
+  // const todayFormat = () => { //current day in "yyyy-mm-dd" format
+  //   let date = new Date()
+  //   let year = date.getFullYear()
+  //   let month = date.getMonth()
+  //   let days = date.getDate()
+  //   return `${year}-${month + 1 < 10 ? `0${month + 1}` : month + 1}-${days < 10 ? `0${days}` : days}`;
+  // }
 
   useEffect(() => { // gets all data
     const fetchData = async () => {
@@ -39,6 +52,21 @@ function App() {
 
         const staticDataResp = await ZOHO.CRM.CONNECTION.invoke(conn_name, req_data_goals) // target goals module values collected
         setCurrentUserSalesInfo(staticDataResp?.details?.statusMessage?.data?.[0])
+
+        let current_user = "2728756000175227017"; // fixed for now
+
+        let req_data_deals = { 
+          parameters: {
+            select_query:
+              `select id, Deal_Name, Account_Name, Account_Name.Account_Name, Amount, Probability, Potential_Close, Last_Follow_Up_Date, Next_Step from Deals where (Owner = '${current_user}')`,
+          },
+          method: "POST",
+          url: "https://www.zohoapis.com/crm/v4/coql",
+          param_type: 2,
+        }
+
+        const dealsResp = await ZOHO.CRM.CONNECTION.invoke(conn_name, req_data_deals) // target deals collected
+        setCurrentUserDeals(dealsResp?.details?.statusMessage?.data)
       }
     }
 
@@ -108,6 +136,61 @@ function App() {
     return targetToDateForCurrentMonth + targetToDateForPreviousMonths;
   }
 
+  const columns = [ // custom columns for the top 10 deals
+    {
+      field: 'Deal_Name',
+      headerName: 'Deal name',
+      flex: 2.5,
+    },
+    {
+      field: 'Account_Name.Account_Name',
+      headerName: 'Account',
+      flex: 2,
+    },
+    {
+      field: 'Amount',
+      headerName: 'Amount',
+      renderCell: (params) => (
+        <Typography sx={{ fontSize: "small", color: "green" }}>
+            {formatter.format(params.value)}
+        </Typography>
+      ),
+      flex: 1
+    },
+    {
+      field: 'Probability',
+      headerName: 'Probability',
+      renderCell: (params) => (
+        <Typography sx={{ fontSize: "small" }}>
+            {formatter.format(params.value)}
+        </Typography>
+      ),
+      flex: 1
+    },
+    {
+      field: 'Potential_Close',
+      headerName: 'Potential',
+      flex: 1
+    },
+    {
+      field: 'Last_Follow_Up_Date',
+      headerName: 'Last Contact',
+      renderCell: (params) => (
+        <Box>
+            <Typography fontSize="small" sx={{ color: `${(params.value === null ||  (((new Date() - new Date(params.value)) / (1000 * 60 * 60 * 24)) > 45)) ? "red" : "black"}` }}>
+                {params.value === null ? "Needs Update" : params.value}
+            </Typography>
+        </Box>
+      ),
+      flex:1
+    },
+    {
+      field: 'Next_Step',
+      headerName: 'Next Activity',
+      flex: 1
+    }
+  ];
+
 
   return (
     <Box
@@ -125,94 +208,200 @@ function App() {
         Account Exectutive's Insights & Planning
       </Typography>
 
-      <Typography variant='h5' sx={{  // top title
-        fontWeight: "bold",
-        mb: "1.2rem",
-        ml: "1.5rem"
-      }}>
-        Performance & Goal Snapshot
-      </Typography>
-      {/* {(currentUserSalesInfo?.[`${getCurrentMonth()}_Actual`] / currentUserSalesInfo?.[getCurrentMonth()])} */}
-
       <Box
         sx={{
-          width: "70%",
-          mb: "1.5rem",
-          ml: "1.5rem"
+          width: "100%",
+          display: "flex",
+          justifyContent: "flex-start",
+          alignItems: "flex-start",
+          flexDirection: "row",
+          // flexWrap: "wrap",
+          gap: 1
         }}
       >
-        <TableContainer>
-          <Table sx={{
-            width: "100%"
+        <Box
+          sx={{
+            width: {
+              xl: "22%",
+              lg: "22%",
+              md: "48%"
+            },
+            // backgroundColor: "yellowgreen",s
+            // overflow: "auto"
+          }}
+        >
+          <Typography variant='h5' sx={{  // top title
+            fontWeight: "bold",
+            mb: "1.2rem",
+            ml: "1.5rem",
+            mt: "1rem"
           }}>
-            <TableHead>
-              <TableRow>
-                <TableCell sx={{ fontWeight: "bold" }}>Account Owner</TableCell>
-                <TableCell sx={{ fontWeight: "bold" }}>Month Goal</TableCell>
-                <TableCell sx={{ fontWeight: "bold" }}>Year Goal</TableCell>
-                <TableCell sx={{ fontWeight: "bold" }}>Month Actual</TableCell>
-                <TableCell sx={{ fontWeight: "bold" }}>Year Actual</TableCell>
-              </TableRow>
-            </TableHead>
+            Performance & Goal Snapshot
+          </Typography>
 
-            <TableBody>
-              <TableRow>
-                <TableCell>{currentUser?.currentUserName}</TableCell>
-                <TableCell>{formatter.format(currentUserSalesInfo?.[getCurrentMonth()])}</TableCell>
-                <TableCell>{formatter.format(currentUserSalesInfo?.Annual)}</TableCell>
-                <TableCell>{formatter.format(currentUserSalesInfo?.[`${getCurrentMonth()}_Actual`])}</TableCell>
-                <TableCell>{formatter.format(currentUserSalesInfo?.Annual_Actuals)}</TableCell>
-              </TableRow>
-            </TableBody>
+          <Box
+            sx={{
+              width: "92%",
+              mb: "1.5rem",
+              ml: "1.5rem"
+            }}
+          >
+            <TableContainer>
+              <Table sx={{
+                width: "100%"
+              }}>
+                <TableBody>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: "bold", padding: "8px 10px" }}>{currentUser?.currentUserName}</TableCell>
+                    <TableCell sx={{ fontWeight: "bold", padding: "8px 10px" }}>Month Goal</TableCell>
+                    <TableCell sx={{ fontWeight: "bold", padding: "8px 10px" }}>Year Goal</TableCell>
+                  </TableRow>
 
-            <TableHead>
-              <TableRow>
-                <TableCell sx={{ fontWeight: "bold" }}>% Month Goal</TableCell>
-                <TableCell sx={{ fontWeight: "bold" }}>% Year Goal</TableCell>
-                <TableCell sx={{ fontWeight: "bold" }}>MTD Goal</TableCell>
-                <TableCell sx={{ fontWeight: "bold" }}>YTD Goal</TableCell>
-                <TableCell sx={{ fontWeight: "bold" }}>MTD PERF</TableCell>
-                <TableCell sx={{ fontWeight: "bold" }}>YTD PERF</TableCell>
-              </TableRow>
-            </TableHead>
+                  <TableRow>
+                    <TableCell sx={{ padding: "8px 10px" }} rowSpan={5}>
+                      <img 
+                        src={Logo}
+                        alt="user logo"
+                        style={{ width: "100%" }}
+                      />
+                    </TableCell>
+                    <TableCell sx={{ padding: "8px 10px", fontSize: "1.1rem" }}>{formatter.format(currentUserSalesInfo?.[getCurrentMonth()])}</TableCell>
+                    <TableCell sx={{ padding: "8px 10px", fontSize: "1.1rem" }}>{formatter.format(currentUserSalesInfo?.Annual)}</TableCell>
+                  </TableRow>
 
-            <TableBody>
-              <TableRow>
-                <TableCell>{`${((currentUserSalesInfo?.[`${getCurrentMonth()}_Actual`] / currentUserSalesInfo?.[getCurrentMonth()]) * 100).toFixed(0)}%`}</TableCell>
-                <TableCell>{`${((currentUserSalesInfo?.Annual_Actuals / currentUserSalesInfo?.Annual) * 100).toFixed(0)}%`}</TableCell>
-                <TableCell>{formatter.format(monthlyDatewiseTarget())}</TableCell>
-                <TableCell>{formatter.format(yearlyTargetToDate())}</TableCell>
-                <TableCell sx={{ color: `${currentUserSalesInfo?.[`${getCurrentMonth()}_Actual`] / monthlyDatewiseTarget() < 1 ? "red" : "green"}`}}>{`${((currentUserSalesInfo?.[`${getCurrentMonth()}_Actual`] / monthlyDatewiseTarget()) * 100).toFixed(0)}%`}</TableCell>
-                <TableCell sx={{ color: `${currentUserSalesInfo?.Annual_Actuals / yearlyTargetToDate() < 1 ? "red" : "green"}`}}>{`${((currentUserSalesInfo?.Annual_Actuals / yearlyTargetToDate()) * 100).toFixed(0)}%`}</TableCell>
-              </TableRow>
-            </TableBody>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: "bold", padding: "8px 10px" }}>Month Actual</TableCell>
+                    <TableCell sx={{ fontWeight: "bold", padding: "8px 10px" }}>Year Actual</TableCell>
+                  </TableRow>
 
-            <TableHead>
-              <TableRow>
-                <TableCell sx={{ fontWeight: "bold" }}>Project Close</TableCell>
-                <TableCell sx={{ fontWeight: "bold" }}>Project Total</TableCell>
-                <TableCell sx={{ fontWeight: "bold" }}>Project Perf</TableCell>
-              </TableRow>
-            </TableHead>
+                  <TableRow>
+                    <TableCell sx={{ padding: "8px 10px", fontSize: "1.1rem" }}>{formatter.format(currentUserSalesInfo?.[`${getCurrentMonth()}_Actual`])}</TableCell>
+                    <TableCell sx={{ padding: "8px 10px", fontSize: "1.1rem" }}>{formatter.format(currentUserSalesInfo?.Annual_Actuals)}</TableCell>
+                  </TableRow>
 
-            <TableBody>
-              <TableRow>
-                <TableCell>{formatter.format(55000)}</TableCell>
-                <TableCell>{formatter.format(100000)}</TableCell>
-                <TableCell sx={{ color: `${55000 / 100000 < 1 ? "red" : "green"}`}}>{`${((55000 / 100000) * 100).toFixed(0)}%`}</TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        </TableContainer>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: "bold", padding: "8px 10px" }}>% Month Goal</TableCell>
+                    <TableCell sx={{ fontWeight: "bold", padding: "8px 10px" }}>% Year Goal</TableCell>
+                  </TableRow>
+
+                  <TableRow>
+                    <TableCell sx={{ padding: "8px 10px", fontSize: "1.1rem" }}>{`${((currentUserSalesInfo?.[`${getCurrentMonth()}_Actual`] / currentUserSalesInfo?.[getCurrentMonth()]) * 100).toFixed(0)}%`}</TableCell>
+                    <TableCell sx={{ padding: "8px 10px", fontSize: "1.1rem" }}>{`${((currentUserSalesInfo?.Annual_Actuals / currentUserSalesInfo?.Annual) * 100).toFixed(0)}%`}</TableCell>
+                  </TableRow>
+
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: "bold", padding: "8px 10px" }}>Month Rank</TableCell>
+                    <TableCell sx={{ fontWeight: "bold", padding: "8px 10px" }}>MTD Goal</TableCell>
+                    <TableCell sx={{ fontWeight: "bold", padding: "8px 10px" }}>YTD Goal</TableCell>
+                  </TableRow>
+
+                  <TableRow>
+                    <TableCell sx={{ padding: "8px 10px", fontSize: "1.1rem" }}>1</TableCell>
+                    <TableCell sx={{ padding: "8px 10px", fontSize: "1.1rem" }}>{formatter.format(monthlyDatewiseTarget())}</TableCell>
+                    <TableCell sx={{ padding: "8px 10px", fontSize: "1.1rem" }}>{formatter.format(yearlyTargetToDate())}</TableCell>
+                  </TableRow>
+
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: "bold", padding: "8px 10px" }}>Year Rank</TableCell>
+                    <TableCell sx={{ fontWeight: "bold", padding: "8px 10px" }}>MTD PERF</TableCell>
+                    <TableCell sx={{ fontWeight: "bold", padding: "8px 10px" }}>YTD PERF</TableCell>
+                  </TableRow>
+
+                  <TableRow>
+                    <TableCell sx={{ padding: "8px 10px", fontSize: "1.1rem" }}>{2}</TableCell>
+                    <TableCell sx={{ color: `${currentUserSalesInfo?.[`${getCurrentMonth()}_Actual`] / monthlyDatewiseTarget() < 1 ? "red" : "green"}`, padding: "8px 10px", fontSize: "1.1rem"}}>{`${((currentUserSalesInfo?.[`${getCurrentMonth()}_Actual`] / monthlyDatewiseTarget()) * 100).toFixed(0)}%`}</TableCell>
+                    <TableCell sx={{ color: `${currentUserSalesInfo?.Annual_Actuals / yearlyTargetToDate() < 1 ? "red" : "green"}`, padding: "8px 10px", fontSize: "1.1rem" }}>{`${((currentUserSalesInfo?.Annual_Actuals / yearlyTargetToDate()) * 100).toFixed(0)}%`}</TableCell>
+                  </TableRow>
+
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: "bold", padding: "8px 10px" }}>Project Close</TableCell>
+                    <TableCell sx={{ fontWeight: "bold", padding: "8px 10px" }}>Project Total</TableCell>
+                    <TableCell sx={{ fontWeight: "bold", padding: "8px 10px" }}>Project Perf</TableCell>
+                  </TableRow>
+
+                  <TableRow>
+                    <TableCell sx={{ padding: "8px 10px", fontSize: "1.1rem" }}>{formatter.format(55000)}</TableCell>
+                    <TableCell sx={{ padding: "8px 10px", fontSize: "1.1rem" }}>{formatter.format(100000)}</TableCell>
+                    <TableCell sx={{ color: `${55000 / 100000 < 1 ? "red" : "green"}`, padding: "8px 10px", fontSize: "1.1rem" }}>{`${((55000 / 100000) * 100).toFixed(0)}%`}</TableCell>
+                  </TableRow>
+
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: "bold", padding: "8px 10px" }}>Daily Close</TableCell>
+                    <TableCell sx={{ padding: "8px 10px", fontSize: "1.1rem" }}>{formatter.format(5000)}</TableCell>
+                    <TableCell sx={{ fontWeight: "bold", padding: "8px 10px" }}>Total</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Box>
+        </Box>
+
+        <Box
+          sx={{
+            width: "50%",
+            backgroundColor: "rgba(250, 250, 250, 0.9)",
+            // overflow: "auto"
+          }}
+        >
+          <Typography variant='h5' sx={{  // top title
+            fontWeight: "bold",
+            mb: "1.2rem",
+            ml: "1.5rem",
+            mt: "1rem"
+          }}>
+            Potential Sales
+          </Typography>
+
+          <Box
+            sx={{
+              width: "96%",
+              mb: "1.5rem",
+              ml: "1.5rem",
+              height: `calc(111px + ${10 * 42}px)`
+            }}
+          >
+            <DataGrid
+              rows={currentUserDeals}
+              columns={columns}
+              pageSize={10}
+              rowsPerPageOptions={[10]}
+              disableSelectionOnClick
+              rowHeight={42}
+            />
+          </Box>
+        </Box>
+
+        <Box
+          sx={{
+            width: {
+              xl: "27%",
+              lg: "27%",
+              md: "50%",
+            },
+            // backgroundColor: "navajowhite",
+            overflow: "auto",
+          }}
+        >
+          <Typography variant='h5' sx={{  // top title
+            fontWeight: "bold",
+            mb: "1.2rem",
+            ml: "1.5rem"
+          }}>
+            Graph of Performance
+          </Typography>
+
+          <Box
+            sx={{
+              width: "94%",
+              mb: "1.5rem",
+              ml: "1.5rem",
+              mt: "1rem"
+            }}
+          >
+            <BarChart />
+          </Box>
+        </Box>
       </Box>
-
-      <Typography variant='h5' sx={{  // top title
-        fontWeight: "bold",
-        mb: "1.2rem",
-        ml: "1.5rem"
-      }}>
-        Potential Sales
-      </Typography>
     </Box>
   );
 }
