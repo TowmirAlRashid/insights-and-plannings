@@ -4,6 +4,9 @@ import { useEffect, useState } from 'react';
 import BarChart from './components/BarChart';
 
 import Logo from "./assets/user-thumbnail.png"
+import CompanyLogo from "./assets/pro-logo.jpg"
+
+import TabsUI from './components/Tabs';
 
 
 const ZOHO = window.ZOHO;
@@ -12,7 +15,9 @@ function App() {
   const [initialized, setInitialized] = useState(false) // initialize the widget
   const [currentUser, setCurrentUser] = useState() // owner of the deals
   const [currentUserSalesInfo, setCurrentUserSalesInfo] = useState() // get the current user's sales goal info
-  const [currentUserDeals, setCurrentUserDeals] = useState([]) // gets all the deals of the current user
+  const [currentUserDeals, setCurrentUserDeals] = useState() // gets all the deals of the current user
+
+  const [salesGoalOwners, setSalesGoalOwners] = useState() // gets all the sales goal owners by name and id
 
   useEffect(() => { // initialize the app
     ZOHO.embeddedApp.on("PageLoad", function (data) { 
@@ -40,6 +45,21 @@ function App() {
         })
 
         const conn_name = "zoho_crm_conn";
+        let req_sales_owners_data = {
+          parameters: {
+            select_query:
+              `select Owner.id, Name from Sales_Goals where (Name != 'Company' and Year = ${new Date().getFullYear()})`,
+          },
+          method: "POST",
+          url: "https://www.zohoapis.com/crm/v4/coql",
+          param_type: 2,
+        }
+
+        const salesOwnersResp = await ZOHO.CRM.CONNECTION.invoke(conn_name, req_sales_owners_data) // gets name and id for all the users with sales goals
+        setSalesGoalOwners(salesOwnersResp?.details?.statusMessage?.data)
+        console.log(salesOwnersResp?.details?.statusMessage?.data)
+
+        
         let req_data_goals = {
           parameters: {
             select_query:
@@ -192,6 +212,7 @@ function App() {
   ];
 
 
+  
   return (
     <Box
       sx={{
@@ -200,13 +221,35 @@ function App() {
         p: "1rem"
       }}
     >
-      <Typography variant='h4' sx={{  // top title
-        textAlign: "center",
-        fontWeight: "bold",
-        mb: "1.5rem"
-      }}>
-        Account Exectutive's Insights & Planning
-      </Typography>
+      <Box // top logo and text
+        sx={{
+          width: "100%",
+          display: "flex",
+          flexDirection: "row",
+          justifyContent: "center",
+          alignItems: "center",
+          gap: "2rem",
+          pb: "1.5rem"
+        }}
+      >
+        <Box>
+          <img src={CompanyLogo} alt="logo" width="130px" height="70px" />
+        </Box>
+
+        <Typography variant='h4' sx={{  // top title
+          textAlign: "center",
+          fontWeight: "bold",
+          mb: "1.5rem",
+        }}>
+          Account Exectutive's Insights & Planning
+        </Typography>
+      </Box>
+
+      {
+        <TabsUI 
+          salesGoalOwners={salesGoalOwners}
+        />
+      }
 
       <Box
         sx={{
@@ -352,7 +395,7 @@ function App() {
             Potential Sales
           </Typography>
 
-          <Box
+          {/* <Box
             sx={{
               width: "96%",
               mb: "1.5rem",
@@ -368,7 +411,7 @@ function App() {
               disableSelectionOnClick
               rowHeight={42}
             />
-          </Box>
+          </Box> */}
         </Box>
 
         <Box
