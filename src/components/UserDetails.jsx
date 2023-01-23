@@ -48,7 +48,7 @@ const UserDetails = ({ owner }) => {
         }
 
         fetchData()
-    }, [owner,currentUserSalesInfo])
+    }, [owner])
 
     const formatter = new Intl.NumberFormat('en-US', { // js formatter for currency
         style: 'currency',
