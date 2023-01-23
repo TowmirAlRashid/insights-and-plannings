@@ -2,8 +2,8 @@ import * as React from 'react';
 import PropTypes from 'prop-types';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
-import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
+import UserDetails from './UserDetails';
 
 function TabPanel(props) {
   const { children, value, index, ...other } = props;
@@ -63,7 +63,9 @@ export default function BasicTabs({ salesGoalOwners }) {
         salesGoalOwners?.map((owner, index) => {
             return (
                 <TabPanel value={value} index={index} key={index}>
-                    {owner?.Name}
+                    <UserDetails 
+                      owner={owner}
+                    />
                 </TabPanel>
             )
         })
