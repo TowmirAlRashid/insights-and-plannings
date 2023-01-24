@@ -4,7 +4,7 @@ import React from 'react'
 import Chart from 'chart.js/auto';
 import { Bar } from 'react-chartjs-2'
 
-const BarChart = () => {
+const BarChart = ({ currentUserSalesInfo, lastYearDecActual }) => {
     const labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
     const data = {
@@ -12,19 +12,19 @@ const BarChart = () => {
     datasets: [
         {
         label: 'Goal',
-        data: [100, 300, 200, 150, 95, 100, 300, 200, 150, 95, 75, 95],
+        data: [currentUserSalesInfo?.Jan, currentUserSalesInfo?.Feb, currentUserSalesInfo?.Mar, currentUserSalesInfo?.Apr, currentUserSalesInfo?.May, currentUserSalesInfo?.Jun, currentUserSalesInfo?.Jul, currentUserSalesInfo?.Aug, currentUserSalesInfo?.Sep, currentUserSalesInfo?.Oct, currentUserSalesInfo?.Nov, currentUserSalesInfo?.Dec],
         borderColor: "blue",
         backgroundColor: "blue",
         },
         {
         label: 'Actual',
-        data: [50, 140, 400, 290, 75, 120, 150, 250, 170, 35, 100, 75],
+        data: [currentUserSalesInfo?.Jan_Actual, currentUserSalesInfo?.Feb_Actual, currentUserSalesInfo?.Mar_Actual, currentUserSalesInfo?.Apr_Actual, currentUserSalesInfo?.May_Actual, currentUserSalesInfo?.Jun_Actual, currentUserSalesInfo?.Jul_Actual, currentUserSalesInfo?.Aug_Actual, currentUserSalesInfo?.Sep_Actual, currentUserSalesInfo?.Oct_Actual, currentUserSalesInfo?.Nov_Actual, currentUserSalesInfo?.Dec_Actual],
         borderColor: "green",
         backgroundColor: "green",
         },
         {
         label: 'Previous',
-        data: [80, 270, 150, 170, 25, 300, 200, 230, 180, 75, 25, 150],
+        data: [lastYearDecActual?.Jan_Actual, lastYearDecActual?.Feb_Actual, lastYearDecActual?.Mar_Actual, lastYearDecActual?.Apr_Actual, lastYearDecActual?.May_Actual, lastYearDecActual?.jun_Actual, lastYearDecActual?.Jul_Actual, lastYearDecActual?.Aug_Actual, lastYearDecActual?.Sep_Actual, lastYearDecActual?.Oct_Actual, lastYearDecActual?.Nov_Actual, lastYearDecActual?.Dec_Actual],
         borderColor: "yellow",
         backgroundColor: "yellow",
         },

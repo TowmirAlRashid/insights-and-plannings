@@ -11,9 +11,9 @@ const ZOHO = window.ZOHO;
 
 function App() {
   const [initialized, setInitialized] = useState(false) // initialize the widget
-  const [currentUser, setCurrentUser] = useState() // owner of the deals
 
   const [salesGoalOwners, setSalesGoalOwners] = useState() // gets all the sales goal owners by name and id
+  const [salesGoalOwnersUnfiltered, setSalesGoalOwnersUnfiltered] = useState() // gets all the sales goal owners by name and id
 
   useEffect(() => { // initialize the app
     ZOHO.embeddedApp.on("PageLoad", function (data) { 
@@ -26,27 +26,10 @@ function App() {
   useEffect(() => { // gets all data
     const fetchData = async () => {
       if(initialized) {
-        const currentUserResp = await ZOHO.CRM.CONFIG.getCurrentUser(); // getting the full name and id for current user
-        setCurrentUser({
-          currentUserId: currentUserResp?.users?.[0]?.id,
-          currentUserName: currentUserResp?.users?.[0]?.full_name,
-        })
-
-        const conn_name = "zoho_crm_conn";
-        let req_sales_owners_data = {
-          parameters: {
-            select_query:
-              `select Owner.id, Name from Sales_Goals where (Name != 'Company' and Year = ${new Date().getFullYear()})`,
-          },
-          method: "POST",
-          url: "https://www.zohoapis.com/crm/v4/coql",
-          param_type: 2,
-        }
-
-        const salesOwnersResp = await ZOHO.CRM.CONNECTION.invoke(conn_name, req_sales_owners_data) // gets name and id for all the users with sales goals
-        console.log({salesOwnersResp})
-        setSalesGoalOwners(salesOwnersResp?.details?.statusMessage?.data)
-        // console.log(salesOwnersResp?.details?.statusMessage?.data)
+        const salesOwnersResp = await ZOHO.CRM.API.getAllRecords({Entity:"Sales_Goals",sort_order:"asc",per_page:200,page:1}) // gets name and id for all the users with sales goals
+        setSalesGoalOwnersUnfiltered(salesOwnersResp?.data)
+        const userSalesGoals = (salesOwnersResp?.data?.filter(sales => sales?.Name !== "Company" && sales?.Year === (new Date().getFullYear()).toString()))
+        setSalesGoalOwners(userSalesGoals)
       }
     }
 
@@ -91,6 +74,7 @@ function App() {
   
         <TabsUI 
           salesGoalOwners={salesGoalOwners}
+          salesGoalOwnersUnfiltered={salesGoalOwnersUnfiltered}
         />
       </Box>
     )
