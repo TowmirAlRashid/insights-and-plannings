@@ -11,34 +11,29 @@ const ZOHO = window.ZOHO;
 
 
 
-const UserDetails = ({ owner, salesGoalOwnersUnfiltered }) => {
+const UserDetails = ({ owner, salesGoalOwnersUnfiltered, monthRank, yearRank }) => {
     const [currentUserSalesInfo, setCurrentUserSalesInfo] = useState() // get the current user's sales goal info
     const [lastYearDecActual, setLastYearDecActual] = useState() // get the current user's sales goal info
     const [currentUserDeals, setCurrentUserDeals] = useState() // gets all the deals of the current user
 
     useEffect(() => {
         const fetchData = async () => {
-            const conn_name = "zoho_crm_conn";
       
               setCurrentUserSalesInfo(owner) // current year sales goals info for this user
 
               const lastYearDataResponse = salesGoalOwnersUnfiltered?.filter(sales => sales?.Year === (new Date().getFullYear() - 1).toString() && sales?.Owner?.id === owner?.Owner?.id) // last year's Actual data
               setLastYearDecActual(lastYearDataResponse?.[0])
+              
 
+              const dealsResp = await ZOHO.CRM.API.searchRecord({Entity:"Deals",Type:"criteria",Query:`((Owner:equals:${owner?.Owner?.id})and(Potential_Close:equals:true))`}) // target deals collected
+              const dealsMap = (dealsResp?.data?.map(deal => {
+                return {
+                  ...deal,
+                  "Account_Name": deal?.Account_Name?.name
+                }
+              }))
 
-              let req_data_deals = { 
-                parameters: {
-                  select_query:
-                    `select id, Deal_Name, Account_Name, Account_Name.Account_Name, Amount, Chance, Potential_Sale, Last_Follow_Up_Date, Next_Step, Strategy from Deals where (Owner = '${owner?.["Owner.id"]}' and Potential_Close = 'true')`,
-                },
-                method: "POST",
-                url: "https://www.zohoapis.com/crm/v4/coql",
-                param_type: 2,
-              }
-      
-              const dealsResp = await ZOHO.CRM.CONNECTION.invoke(conn_name, req_data_deals) // target deals collected
-              // console.log(dealsResp?.details?.statusMessage?.data)
-              setCurrentUserDeals(dealsResp?.details?.statusMessage?.data)
+              setCurrentUserDeals(dealsMap || [])
         }
 
         fetchData()
@@ -116,10 +111,25 @@ const UserDetails = ({ owner, salesGoalOwnersUnfiltered }) => {
         {
             field: 'Deal_Name',
             headerName: 'Deal name',
+            renderCell: (params) => (
+              <Box>
+                <a 
+                  href={`https://crm.zoho.com/crm/org651752009/tab/Potentials/${params.row.id}`} // adds the deal id from the current row data to the custom link
+                  style={{ 
+                    color: "#1976d2",
+                    textDecoration: "none"
+                  }}
+                  target="_blank"
+                  rel="noreferrer"
+                  >
+                    {params.value}
+                </a>
+              </Box>
+            ),
             flex: 1.5,
         },
         {
-            field: 'Account_Name.Account_Name',
+            field: 'Account_Name',
             headerName: 'Account',
             flex: 1.5,
         },
@@ -167,7 +177,11 @@ const UserDetails = ({ owner, salesGoalOwnersUnfiltered }) => {
         },
     ];
 
-  if(currentUserSalesInfo && lastYearDecActual){
+    const projectTotal = () => currentUserDeals?.reduce((prev, deal) => {
+      return prev + deal?.Potential_Sale
+    }, 0)
+
+  if(currentUserSalesInfo && lastYearDecActual && currentUserDeals){
     return (
       <Box
           sx={{
@@ -254,7 +268,7 @@ const UserDetails = ({ owner, salesGoalOwnersUnfiltered }) => {
                     </TableRow>
   
                     <TableRow>
-                      <TableCell sx={{ padding: "8px 10px", fontSize: "1.1rem" }}>1</TableCell>
+                      <TableCell sx={{ padding: "8px 10px", fontSize: "1.1rem", color: `${monthRank?.indexOf(owner?.Owner?.name) === 0 ? "green" : "black"}` }}>{monthRank?.indexOf(owner?.Owner?.name) + 1}</TableCell>
                       <TableCell sx={{ padding: "8px 10px", fontSize: "1.1rem" }}>{formatter((monthlyDatewiseTarget()).toFixed(0))}</TableCell>
                       <TableCell sx={{ padding: "8px 10px", fontSize: "1.1rem" }}>{formatter((yearlyTargetToDate()).toFixed(0))}</TableCell>
                     </TableRow>
@@ -266,7 +280,7 @@ const UserDetails = ({ owner, salesGoalOwnersUnfiltered }) => {
                     </TableRow>
   
                     <TableRow>
-                      <TableCell sx={{ padding: "8px 10px", fontSize: "1.1rem" }}>{2}</TableCell>
+                      <TableCell sx={{ padding: "8px 10px", fontSize: "1.1rem", color: `${yearRank?.indexOf(owner?.Owner?.name) === 0 ? "green" : "black"}` }}>{yearRank?.indexOf(owner?.Owner?.name) + 1}</TableCell>
                       <TableCell sx={{ color: `${currentUserSalesInfo?.[`${getCurrentMonth()}_Actual`] / monthlyDatewiseTarget() < 1 ? "red" : "green"}`, padding: "8px 10px", fontSize: "1.1rem"}}>{`${((currentUserSalesInfo?.[`${getCurrentMonth()}_Actual`] / monthlyDatewiseTarget()) * 100).toFixed(0)}%`}</TableCell>
                       <TableCell sx={{ color: `${currentUserSalesInfo?.Annual_Actuals / yearlyTargetToDate() < 1 ? "red" : "green"}`, padding: "8px 10px", fontSize: "1.1rem" }}>{`${((currentUserSalesInfo?.Annual_Actuals / yearlyTargetToDate()) * 100).toFixed(0)}%`}</TableCell>
                     </TableRow>
@@ -278,11 +292,9 @@ const UserDetails = ({ owner, salesGoalOwnersUnfiltered }) => {
                     </TableRow>
   
                     <TableRow>
-                      <TableCell sx={{ padding: "8px 10px", fontSize: "1.1rem" }}>{formatter(currentUserDeals?.reduce((prev, deal) => {
-                        return prev + Number(deal?.Potential_Sale)
-                      }, 0))}</TableCell>
-                      <TableCell sx={{ padding: "8px 10px", fontSize: "1.1rem" }}>{formatter(100000)}</TableCell>
-                      <TableCell sx={{ color: `${55000 / 100000 < 1 ? "red" : "green"}`, padding: "8px 10px", fontSize: "1.1rem" }}>{`${((55000 / 100000) * 100).toFixed(0)}%`}</TableCell>
+                      <TableCell sx={{ padding: "8px 10px", fontSize: "1.1rem" }}>{formatter((projectTotal()).toFixed(0))}</TableCell>
+                      <TableCell sx={{ padding: "8px 10px", fontSize: "1.1rem" }}>{formatter((projectTotal() + currentUserSalesInfo?.[`${getCurrentMonth()}_Actual`]).toFixed(0))}</TableCell>
+                      <TableCell sx={{ color: `${(projectTotal() + currentUserSalesInfo?.[`${getCurrentMonth()}_Actual`]) / currentUserSalesInfo?.[getCurrentMonth()] < 1 ? "red" : "green"}`, padding: "8px 10px", fontSize: "1.1rem" }}>{`${((((projectTotal() + currentUserSalesInfo?.[`${getCurrentMonth()}_Actual`]) / currentUserSalesInfo?.[getCurrentMonth()])) * 100).toFixed(0)}%`}</TableCell>
                     </TableRow>
   
                     <TableRow>
@@ -386,7 +398,7 @@ const UserDetails = ({ owner, salesGoalOwnersUnfiltered }) => {
           >
             <CircularProgress color="inherit" />
             <Typography fontWeight='bold' fontSize="1.5rem">
-              Loading...
+              Fetching Data. Please Wait...
             </Typography>
           </Box>
         </Box>

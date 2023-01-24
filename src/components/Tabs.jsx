@@ -38,7 +38,7 @@ function a11yProps(index) {
   };
 }
 
-export default function BasicTabs({ salesGoalOwners, salesGoalOwnersUnfiltered }) {
+export default function BasicTabs({ salesGoalOwners, salesGoalOwnersUnfiltered, monthRank, yearRank }) {
   const [value, setValue] = React.useState(0);
 
   const handleChange = (event, newValue) => {
@@ -66,6 +66,8 @@ export default function BasicTabs({ salesGoalOwners, salesGoalOwnersUnfiltered }
                     <UserDetails 
                       owner={owner}
                       salesGoalOwnersUnfiltered={salesGoalOwnersUnfiltered}
+                      monthRank={monthRank}
+                      yearRank={yearRank}
                     />
                 </TabPanel>
             )
